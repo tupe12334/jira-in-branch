@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Agent hook: block gh pr create when branch lacks a Jira ticket",
   "type": "module",
+  "files": [
+    "dist"
+  ],
   "bin": {
     "jira-in-branch": "./dist/index.js"
   },
