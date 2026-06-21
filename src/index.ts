@@ -1,13 +1,14 @@
 #!/usr/bin/env node
-import { read, respond, block, approve } from "@polyhook/sdk";
 import { execSync } from "node:child_process";
+import { read, respond, block, approve } from "@polyhook/sdk";
 
 const JIRA_TICKET = /[A-Z][A-Z0-9]+-\d+/;
 
 const event = await read();
 
 if (event.event === "tool:before" && event.tool === "bash") {
-  const command = (event.input?.command as string) ?? "";
+  const rawCommand = event.input?.command;
+  const command = typeof rawCommand === "string" ? rawCommand : "";
 
   if (/\bgh\s+pr\s+(create|new)\b/.test(command)) {
     let branch: string;
