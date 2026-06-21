@@ -1,0 +1,24 @@
+{
+  "name": "jira-in-branch",
+  "version": "0.1.0",
+  "description": "Agent hook: block gh pr create when branch lacks a Jira ticket",
+  "type": "module",
+  "bin": {
+    "jira-in-branch": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@polyhook/sdk": "^0.1.11"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
