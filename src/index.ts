@@ -38,6 +38,52 @@ function isGhApiPrCreate(command: string): boolean {
   return methodPost || hasFields;
 }
 
+/**
+ * Drops a fork `owner:` prefix from a head ref, leaving the branch name.
+ * @param ref - A PR head ref, possibly `owner:branch`.
+ * @returns The branch portion of the ref.
+ */
+function stripOwner(ref: string): string {
+  const colon = ref.indexOf(":");
+  return colon === -1 ? ref : ref.slice(colon + 1);
+}
+
+/**
+ * Extracts the PR's explicit *head* branch from the command, when present.
+ *
+ * The hook runs in the agent's own working directory, which is frequently NOT
+ * the directory (or even the repository) the PR targets — e.g. a git worktree
+ * whose checked-out branch is named after the worktree, or a submodule the
+ * `gh` call `cd`s into. There `git branch --show-current` reads the wrong
+ * branch. When the command states the head branch explicitly, that is the
+ * branch the PR is actually for, so validate it directly.
+ *
+ * Handles both surfaces and the common shell-quoting shapes:
+ * - `gh pr create --head <b>` / `--head=<b>` / `-H <b>`
+ * - `gh api .../pulls -f head=<b>` (and `-F`/`--field`/`--raw-field`, quoted or not)
+ * A fork head of the form `owner:branch` is reduced to `branch`.
+ * @param command - The bash command being intercepted.
+ * @returns The explicit head branch, or `undefined` when none is stated.
+ */
+function parseHeadBranch(command: string): string | undefined {
+  // `gh pr create` head flag: --head / --head= / -H. The lookbehind keeps `-H`
+  // from matching inside a longer token, and `[\s=]+` rejects `--header`.
+  const prHead = /(?:--head|(?<![\w-])-H)[\s=]+(['"]?)([^\s'"]+)\1/.exec(command);
+  // `gh api` field `head=...`; the `\bhead=` anchor matches whether the quote
+  // sits before `head=` (`-f "head=x"`) or after `=` (`-f head="x"`).
+  const apiHead = /\bhead=(['"]?)([^\s'"]+)\1/.exec(command);
+
+  let raw: string | undefined;
+  if (prHead !== null) {
+    raw = prHead[2];
+  } else if (apiHead !== null) {
+    raw = apiHead[2];
+  }
+
+  if (raw === undefined) return undefined;
+  return stripOwner(raw);
+}
+
 const event = await read();
 
 if (event.event === "tool:before" && event.tool === "bash") {
@@ -45,11 +91,30 @@ if (event.event === "tool:before" && event.tool === "bash") {
   const command = typeof rawCommand === "string" ? rawCommand : "";
 
   if (isGhPrCreate(command) || isGhApiPrCreate(command)) {
-    let branch: string;
+    // Prefer the head branch stated in the command; only read git when the
+    // command leaves it implicit. This keeps the check correct when the hook's
+    // cwd (e.g. an agent worktree) differs from the branch the PR targets.
+    let currentBranch = "";
     try {
-      branch = execSync("git branch --show-current", { encoding: "utf8" }).trim();
+      currentBranch = execSync("git branch --show-current", {
+        encoding: "utf8",
+      }).trim();
     } catch {
-      await respond(block("jira-in-branch: could not read current branch name"));
+      // No git context here; rely on whatever the command states.
+    }
+
+    const headBranch = parseHeadBranch(command);
+    let branch: string;
+    if (headBranch !== undefined) {
+      branch = headBranch;
+    } else {
+      branch = currentBranch;
+    }
+
+    if (branch === "") {
+      await respond(
+        block("jira-in-branch: could not determine the PR branch name"),
+      );
       process.exit(0);
     }
 
@@ -57,8 +122,8 @@ if (event.event === "tool:before" && event.tool === "bash") {
       await respond(
         block(
           `jira-in-branch: branch "${branch}" has no Jira ticket.\n` +
-            `Rename to include a ticket (e.g. feat/PROJ-123-my-feature) before opening a PR.`
-        )
+            `Rename to include a ticket (e.g. feat/PROJ-123-my-feature) before opening a PR.`,
+        ),
       );
       process.exit(0);
     }
