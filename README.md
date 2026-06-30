@@ -6,7 +6,9 @@ Built with [`@polyhook/sdk`](https://github.com/polyhook/polyhook) — works acr
 
 ## How it works
 
-Intercepts every `bash` tool call. When the command matches `gh pr create` (or `gh pr new`), reads the current git branch and checks for a Jira ticket pattern (`[A-Z][A-Z0-9]+-\d+`).
+Intercepts every `bash` tool call. When the command opens a PR — either `gh pr create` / `gh pr new`, or a REST call that creates one (`gh api .../pulls` with a POST-inducing method or field flag) — it reads the current git branch and checks for a Jira ticket pattern (`[A-Z][A-Z0-9]+-\d+`).
+
+Listing PRs (`gh api .../pulls --method GET`) and updating a specific PR (`gh api .../pulls/123`) are not blocked.
 
 | Branch | Result |
 |--------|--------|
