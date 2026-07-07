@@ -5,6 +5,13 @@ import { read, respond, block, approve } from "@polyhook/sdk";
 const JIRA_TICKET = /[A-Z][A-Z0-9]+-\d+/;
 
 /**
+ * Branch names that are allowed to open a PR without a Jira ticket. These are
+ * long-lived integration branches (e.g. release PRs from `develop` into
+ * `main`) that legitimately never carry a ticket in their name.
+ */
+const ALLOWED_BRANCHES = new Set(["develop"]);
+
+/**
  * True when the command opens a PR via `gh pr create` / `gh pr new`.
  * @param command - The bash command being intercepted.
  * @returns Whether the command is a `gh pr create`/`new` invocation.
@@ -118,7 +125,7 @@ if (event.event === "tool:before" && event.tool === "bash") {
       process.exit(0);
     }
 
-    if (!JIRA_TICKET.test(branch)) {
+    if (!ALLOWED_BRANCHES.has(branch) && !JIRA_TICKET.test(branch)) {
       await respond(
         block(
           `jira-in-branch: branch "${branch}" has no Jira ticket.\n` +

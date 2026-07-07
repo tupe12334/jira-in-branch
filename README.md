@@ -15,8 +15,11 @@ Listing PRs (`gh api .../pulls --method GET`) and updating a specific PR (`gh ap
 | Branch | Result |
 |--------|--------|
 | `feat/PROJ-123-my-feature` | ✅ allowed |
+| `develop` | ✅ allowed |
 | `main` | ❌ blocked |
 | `fix-login-bug` | ❌ blocked |
+
+The `develop` branch is exempt: it's a long-lived integration branch (e.g. release PRs from `develop` into `main`) that never carries a ticket in its name.
 
 ## Install
 
