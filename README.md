@@ -51,6 +51,10 @@ Add to `.claude/settings.json`:
 
 Same binary works for Cursor, Windsurf, Cline, and Amp — `@polyhook/sdk` detects the caller automatically. Replace the `command` value above with the equivalent hook config for your agent.
 
+## Related projects
+
+- [moadim](https://moadim.io/) — loop engineering: build, schedule & run agent loops.
+
 ## License
 
 MIT
